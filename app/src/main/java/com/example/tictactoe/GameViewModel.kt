@@ -4,6 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 class GameViewModel : ViewModel() {
@@ -27,68 +30,93 @@ class GameViewModel : ViewModel() {
         when (action) {
             is UserAction.BoardTapped -> {
                 addValueToBoard(action.cellNo)
-                if (!state.hasWon && !isPlayingWithFriend) {
-                    computerPlayer()
+                if (isComputerTurn()) {
+                    viewModelScope.launch {
+                        delay(1000)
+                        computerPlayer()
+                    }
                 }
             }
 
             UserAction.PlayAgainButtonClicked -> {
                 if (state.hasWon || hasBoardFull()) {
                     gameReset()
+                    if (isComputerTurn())
+                        viewModelScope.launch {
+                            delay(1000)
+                            computerPlayer()
+                        }
                 }
             }
+
             UserAction.SwitchPlayMode -> {
                 isPlayingWithFriend = !isPlayingWithFriend
                 gameReset()
+                clearScore()
+
+                if (isComputerTurn())
+                    viewModelScope.launch {
+                    delay(1000)
+                    computerPlayer()
+                }
             }
         }
     }
 
     private fun gameReset() {
+        val hintText = when {
+            state.currentTurn == BoardCellValue.CIRCLE -> "Player 'O' turn"
+            state.currentTurn == BoardCellValue.CROSS && isPlayingWithFriend -> "Player 'X' turn"
+            else -> "Computer 'X' turn"
+        }
+
         boardItems.forEach { (i, _) ->
             boardItems[i] = BoardCellValue.NONE
         }
+
         state = state.copy(
-            hintText = "Player 'O' turn",
-            currentTurn = if (state.currentTurn == BoardCellValue.CIRCLE) BoardCellValue.CROSS else BoardCellValue.CIRCLE,
+            hintText = hintText,
             victoryType = VictoryType.NONE,
             hasWon = false
         )
     }
 
     private fun addValueToBoard(cellNo: Int) {
-        if (state.currentTurn == BoardCellValue.CIRCLE) {
+        if (state.currentTurn == BoardCellValue.CIRCLE && !state.hasWon && isValidMove((cellNo))) {
             boardItems[cellNo] = BoardCellValue.CIRCLE
             state = if (checkForVictory(BoardCellValue.CIRCLE)) {
                 state.copy(
                     hintText = "Player 'O' Won",
                     playerCircleCount = state.playerCircleCount + 1,
-                    currentTurn = BoardCellValue.NONE,
+                    currentTurn = BoardCellValue.CROSS,
                     hasWon = true
                 )
             } else if (hasBoardFull()) {
                 state.copy(
                     hintText = "Game Draw",
+                    currentTurn = BoardCellValue.CROSS,
                     drawCount = state.drawCount + 1
                 )
             } else {
                 state.copy(
-                    hintText = "Player 'X' turn",
+                    hintText = if (isPlayingWithFriend) "Player 'X' turn" else "Computer 'X' turn",
                     currentTurn = BoardCellValue.CROSS
                 )
             }
-        } else if (state.currentTurn == BoardCellValue.CROSS) {
+
+        } else if (state.currentTurn == BoardCellValue.CROSS && !state.hasWon && isValidMove(cellNo)) {
             boardItems[cellNo] = BoardCellValue.CROSS
             state = if (checkForVictory(BoardCellValue.CROSS)) {
                 state.copy(
-                    hintText = "Player 'X' Won",
+                    hintText = if (isPlayingWithFriend) "Player 'X' Won" else "Computer 'X' Won",
                     playerCrossCount = state.playerCrossCount + 1,
-                    currentTurn = BoardCellValue.NONE,
+                    currentTurn = BoardCellValue.CIRCLE,
                     hasWon = true
                 )
             } else if (hasBoardFull()) {
                 state.copy(
                     hintText = "Game Draw",
+                    currentTurn = BoardCellValue.CIRCLE,
                     drawCount = state.drawCount + 1
                 )
             } else {
@@ -96,7 +124,6 @@ class GameViewModel : ViewModel() {
                     hintText = "Player 'O' turn",
                     currentTurn = BoardCellValue.CIRCLE
                 )
-
             }
         }
     }
@@ -140,7 +167,6 @@ class GameViewModel : ViewModel() {
         }
         return -1
     }
-
 
     private fun checkForVictory(boardValue: BoardCellValue): Boolean {
         when {
@@ -187,7 +213,20 @@ class GameViewModel : ViewModel() {
             else -> return false
         }
     }
+    private fun clearScore() {
+        state = state.copy(
+            playerCircleCount = 0,
+            playerCrossCount = 0,
+            drawCount = 0
+        )
+    }
 
+    private fun isComputerTurn(): Boolean {
+        return !state.hasWon && !isPlayingWithFriend && state.currentTurn == BoardCellValue.CROSS
+    }
+    private fun isValidMove(cellNo : Int): Boolean {
+        return boardItems[cellNo] == BoardCellValue.NONE
+    }
     private fun hasBoardFull(): Boolean {
         return !boardItems.containsValue(BoardCellValue.NONE)
     }

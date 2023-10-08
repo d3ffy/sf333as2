@@ -6,6 +6,7 @@ data class GameState(
     val drawCount: Int = 0,
     val hintText: String = "Player '0' turn",
     val currentTurn: BoardCellValue = BoardCellValue.CIRCLE,
+    var lastFirstMove: BoardCellValue = currentTurn,
     val victoryType: VictoryType = VictoryType.NONE,
     val hasWon: Boolean = false
 )
