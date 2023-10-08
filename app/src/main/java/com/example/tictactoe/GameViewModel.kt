@@ -32,7 +32,7 @@ class GameViewModel : ViewModel() {
                 addValueToBoard(action.cellNo)
                 if (isComputerTurn()) {
                     viewModelScope.launch {
-                        delay(1000)
+                        delay(500)
                         computerPlayer()
                     }
                 }
@@ -43,7 +43,7 @@ class GameViewModel : ViewModel() {
                     gameReset()
                     if (isComputerTurn())
                         viewModelScope.launch {
-                            delay(1000)
+                            delay(500)
                             computerPlayer()
                         }
                 }
@@ -56,7 +56,7 @@ class GameViewModel : ViewModel() {
 
                 if (isComputerTurn())
                     viewModelScope.launch {
-                    delay(1000)
+                    delay(500)
                     computerPlayer()
                 }
             }
@@ -82,7 +82,7 @@ class GameViewModel : ViewModel() {
     }
 
     private fun addValueToBoard(cellNo: Int) {
-        if (state.currentTurn == BoardCellValue.CIRCLE && !state.hasWon && isValidMove((cellNo))) {
+        if (state.currentTurn == BoardCellValue.CIRCLE && !state.hasWon && isValidMove((cellNo)) && !isComputerTurn()) {
             boardItems[cellNo] = BoardCellValue.CIRCLE
             state = if (checkForVictory(BoardCellValue.CIRCLE)) {
                 state.copy(
